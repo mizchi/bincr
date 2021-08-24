@@ -9,6 +9,7 @@
     "bincr.mjs"
   ],
   "dependencies": {
+    "chokidar": "^3.5.2",
     "glob": "^7.1.7",
     "meow": "^10.1.1"
   }

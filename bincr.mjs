@@ -6,29 +6,39 @@ import fs from "fs/promises";
 import crypto from "crypto";
 import { promisify } from "util";
 import { spawn } from "child_process";
+import chokidar from "chokidar";
 
 const CONFIG_PATH = ".bincr.json";
 const HASH_PATH = ".bincr-hash";
+const LOCK_PATH = ".bincr-lock";
 
 const cli = meow(
   `
 	Usage
     $ bincr init
-    $ bincr exec <cmd>
+    $ bincr [<cmd>] [--watch, -w]
     $ bincr changed [--update, -u] && <cmd> # return status code
+    $ bincr watch
 
 	Options
     --force, -f Run command force
     --dry, -d Skip hash update
     --update, -u Update hash with "changed"
+    --watch, -w Watch command force
 
 	Examples
+    $ bincr 
+    $ bincr -w
     $ bincr changed -u && echo "detect changed"
-    $ bincr exec "npm run build"
+    $ bincr "npm run build"
 `,
   {
     importMeta: import.meta,
     flags: {
+      watch: {
+        type: "boolean",
+        alias: "-w",
+      },
       force: {
         type: "boolean",
         alias: "-f",
@@ -51,6 +61,13 @@ async function getLastBuildHash(base) {
   return await fs
     .readFile(path.join(base, HASH_PATH), "utf8")
     .catch(() => "<init>");
+}
+
+async function removeLock(base) {
+  const lockPath = path.join(base, LOCK_PATH);
+  if (await exists(lockPath)) {
+    await fs.unlink(lockPath);
+  }
 }
 
 async function saveBuildHash(base, hash) {
@@ -94,6 +111,34 @@ async function exists(filepath) {
   }
 }
 
+async function run(base, config, flags, cmd) {
+  const lockPath = path.join(base, LOCK_PATH);
+  if (await exists(lockPath)) {
+    log(`build locked`);
+    return;
+  }
+
+  const hash = await createHash(base, config.watch);
+  const lastHash = await getLastBuildHash(base);
+  const changed = flags.force || lastHash !== hash;
+  const isDry = flags.dry;
+  if (!changed) {
+    log("skip", base);
+    return;
+  }
+  // run
+  log("changes detected", hash);
+  await fs.writeFile(lockPath, Date.now().toString());
+  await spawnCmd(base, cmd);
+  await removeLock(base);
+  if (isDry) {
+    log("run without hash update", hash);
+  } else {
+    log(`update ${HASH_PATH}`, hash);
+    await saveBuildHash(base, hash);
+  }
+}
+
 async function main() {
   const base = process.cwd();
 
@@ -105,50 +150,62 @@ async function main() {
     }
     await fs.writeFile(
       configPath,
-      JSON.stringify({ cmd: "npm run build", watch: ["src/**"] }, null, 2)
+      JSON.stringify(
+        { cmd: "echo 'Edit .bincr.json cmd'", watch: ["src/**"] },
+        null,
+        2
+      )
     );
     await fs.writeFile(path.join(base, HASH_PATH), "<init>");
     log("generate .bincr.json");
     log(`Add ignore rule to .gitignore:
 
     echo "${HASH_PATH}" >> .gitignore
+    echo "${LOCK_PATH}" >> .gitignore
+
     `);
     return;
   }
 
-  if (cli.input[0] === "exec") {
-    let config;
-    try {
-      config = await readConfig(base);
-    } catch (err) {
-      log(".bincr.json not found. Run `bincr init` first");
-      return process.exit(1);
-    }
-
-    const hash = await createHash(base, config.watch);
-    const lastHash = await getLastBuildHash(base);
-    const changed = cli.flags.force || lastHash !== hash;
-    const isDry = cli.flags.dry;
-    if (cli.input[0] === "changed") {
-      cli.input.update && (await saveBuildHash(base, hash));
-      process.exit(changed ? 0 : 1);
-    }
-    if (!changed) {
-      log("skip", base);
-      return;
-    }
-
-    // run
-    log("changes detected", hash);
-    const cmd = cli.input[1] ?? config.cmd;
-    await spawnCmd(base, cmd);
-    if (isDry) {
-      log("run without hash update", hash);
-    } else {
-      log(`update ${HASH_PATH}`, hash);
-      await saveBuildHash(base, hash);
-    }
+  let config;
+  try {
+    config = await readConfig(base);
+  } catch (err) {
+    log(".bincr.json not found. Run `bincr init` first");
+    return process.exit(1);
   }
+
+  const cmd = cli.input[0] ?? config.cmd;
+  if (cli.flags.watch) {
+    await removeLock(base);
+
+    process.on("exit", async () => {
+      log("Exitting...");
+      await removeLock(base);
+    });
+    process.on("SIGINT", () => process.exit(0));
+
+    const runD = debounced(500, run);
+    chokidar.watch(config.watch, { cwd: base }).on("all", async (fpath) => {
+      log(`[watch] ${fpath} changed`);
+      runD(base, config, cli.flags, cmd);
+    });
+    return;
+  } else {
+    await run(base, config, cli.flags, cmd);
+  }
+}
+
+function debounced(ms, cb) {
+  let timeout;
+  return (...args) => {
+    log(`[watch] received...`);
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      log(`[watch] exec`);
+      cb(...args);
+    }, ms);
+  };
 }
 
 main().catch(console.error);
