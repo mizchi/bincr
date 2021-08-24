@@ -1,6 +1,6 @@
 {
   "name": "bincr",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "type": "module",
   "main": "bincr.mjs",
   "license": "MIT",
