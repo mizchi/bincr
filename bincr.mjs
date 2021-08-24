@@ -23,8 +23,8 @@ const cli = meow(
     --update, -u Update hash with "changed"
 
 	Examples
-    $ bincr status -d && echo "detect changed"
-    $ bincr npm run build
+    $ bincr changed -u && echo "detect changed"
+    $ bincr exec "npm run build"
 `,
   {
     importMeta: import.meta,
