@@ -1,0 +1,15 @@
+{
+  "name": "bincr",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "bincr.mjs",
+  "license": "MIT",
+  "bin": "bincr.mjs",
+  "files": [
+    "bincr.mjs"
+  ],
+  "dependencies": {
+    "glob": "^7.1.7",
+    "meow": "^10.1.1"
+  }
+}

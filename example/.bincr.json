@@ -1,0 +1,4 @@
+{
+  "cmd": "cat src/x.js",
+  "watch": ["src/**"]
+}
