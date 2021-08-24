@@ -148,7 +148,7 @@ async function run(base, config, flags, cmd) {
 async function main() {
   const base = process.cwd();
   if (cli.flags.prefix) {
-    LOG_PREFIX = "bincr:" + prefix;
+    LOG_PREFIX = "bincr:" + cli.flags.prefix;
   }
 
   if (cli.input[0] === "init") {
