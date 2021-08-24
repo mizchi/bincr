@@ -1,0 +1,4 @@
+{
+  "cmd": "echo a",
+  "watch": ["src/**"]
+}

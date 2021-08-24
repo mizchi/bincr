@@ -1,4 +1,4 @@
 {
-  "cmd": "cat src/x.js",
+  "cmd": "echo b",
   "watch": ["src/**"]
 }
