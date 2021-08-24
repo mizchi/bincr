@@ -50,14 +50,24 @@ $ npx bincr changed -u && echo 1
 }
 ```
 
-## Workspace:
+## Workspace
+
+Run mutiple bincr project
 
 ```json
 {
-  "watch": [], # hash targets
+  "watch": [],
   "cmd": "echo 'no build task'",
   "workspaces": ["packages/a", "packages/b"]
 }
+```
+
+```bash
+## run
+$ npx bincr workspace
+
+## watch
+$ npx bincr workspace -w
 ```
 
 ## LICENSE
