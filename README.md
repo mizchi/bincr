@@ -6,25 +6,31 @@ Super simple incremental build helper. (inspired by bazel)
 $ npx bincr init
 # edit `.bincr.json`'s watch and cmd
 # echo ".bincr-hash" >> .gitignore 
-$ npx bincr exec # Run command with update .bincr-hash
-$ npx bincr exec # Skip because of same hash
-# edit targets ...
-$ npx bincr exec # Run command by target changes
+$ npx bincr # Run command with update .bincr-hash
+
+# second run
+$ npx bincr # Skip because of same hash
+
+# after watch targets ...
+$ npx bincr # Run command by target changes
+
+# watch!
+$ npx bincr -w
 ```
 
 ## How it works
 
 - Generate merkle hash for watched targets
 - Compare `.bincr-hash` and current hash
-- Run cmd if hash changed
+- Run `cmd` if hash changed
 - Update `.bincr-hash`
 
 ## How to use: Exec
 
 ```bash
-$ npx bincr exec # run default
-$ npx bincr exec "npm run build" # run default
-$ npx bincr exec -f # run force
+$ npx bincr # run default
+$ npx bincr "npm run build" # run default
+$ npx bincr -f # run force
 ```
 
 ## How to use: Status Code
@@ -41,6 +47,16 @@ $ npx bincr changed -u && echo 1
 {
   "watch": ["src/**"], # hash targets
   "cmd": "npm run build"
+}
+```
+
+## Workspace:
+
+```json
+{
+  "watch": [], # hash targets
+  "cmd": "echo 'no build task'",
+  "workspaces": ["packages/a", "packages/b"]
 }
 ```
 

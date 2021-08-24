@@ -1,0 +1,5 @@
+{
+  "cmd": "echo wip",
+  "watch": [],
+  "workspaces": ["packages/a", "packages/b"]
+}

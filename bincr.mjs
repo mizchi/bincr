@@ -12,6 +12,8 @@ const CONFIG_PATH = ".bincr.json";
 const HASH_PATH = ".bincr-hash";
 const LOCK_PATH = ".bincr-lock";
 
+let LOG_PREFIX = "bincr";
+
 const cli = meow(
   `
 	Usage
@@ -35,6 +37,10 @@ const cli = meow(
   {
     importMeta: import.meta,
     flags: {
+      prefix: {
+        type: "string",
+        alias: "-p",
+      },
       watch: {
         type: "boolean",
         alias: "-w",
@@ -51,7 +57,7 @@ const cli = meow(
   }
 );
 
-const log = (...args) => console.log("[bincr]", ...args);
+const log = (...args) => console.log(`[${LOG_PREFIX}]`, ...args);
 
 async function readConfig(base) {
   return JSON.parse(await fs.readFile(path.join(base, CONFIG_PATH), "utf8"));
@@ -141,6 +147,9 @@ async function run(base, config, flags, cmd) {
 
 async function main() {
   const base = process.cwd();
+  if (cli.flags.prefix) {
+    LOG_PREFIX = "bincr:" + prefix;
+  }
 
   if (cli.input[0] === "init") {
     const configPath = path.join(base, CONFIG_PATH);
@@ -175,7 +184,36 @@ async function main() {
     return process.exit(1);
   }
 
+  if (cli.input[0] === "workspace") {
+    const ws = config.workspaces || [];
+    if (ws.length === 0) {
+      console.error("no workspace");
+      process.exit(1);
+    }
+    const processes = ws.map((wsPath) => {
+      let args = ["bincr", "--prefix", wsPath];
+      if (cli.flags.watch) {
+        args.push("-w");
+      }
+      const dir = path.join(base, wsPath);
+      log("spawn", "npx", args, dir);
+      return spawn("npx", args, {
+        cwd: dir,
+        stdio: "inherit",
+        env: process.env,
+      });
+    });
+    process.on("exit", (code) => {
+      processes.forEach((p) => {
+        p.kill();
+      });
+    });
+    process.on("SIGINT", () => process.exit(0));
+    return;
+  }
+
   const cmd = cli.input[0] ?? config.cmd;
+
   if (cli.flags.watch) {
     await removeLock(base);
 
