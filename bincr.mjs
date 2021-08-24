@@ -224,8 +224,7 @@ async function main() {
     process.on("SIGINT", () => process.exit(0));
 
     const runD = debounced(500, run);
-    chokidar.watch(config.watch, { cwd: base }).on("all", async (fpath) => {
-      log(`[watch] ${fpath} changed`);
+    chokidar.watch(config.watch, { cwd: base }).on("all", async () => {
       runD(base, config, cli.flags, cmd);
     });
     return;
